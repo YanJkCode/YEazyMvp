@@ -8,6 +8,7 @@ import android.net.NetworkInfo;
 import com.android.eazymvp.base.baseInterface.IBasePresenter;
 import com.android.eazymvp.base.baseInterface.IBaseView;
 
+
 public abstract class BaseMvpFragment<P extends IBasePresenter> extends BaseFragment implements IBaseView<P> {
     protected P mPresenter;
 

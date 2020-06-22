@@ -1,5 +1,6 @@
 package com.android.eazymvp.base.baseimpl.presenter;
 
+
 import com.android.eazymvp.base.baseInterface.IBaseViewBack;
 
 import io.reactivex.disposables.Disposable;

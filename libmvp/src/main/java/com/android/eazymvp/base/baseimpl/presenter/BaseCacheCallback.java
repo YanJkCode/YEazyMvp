@@ -1,5 +1,6 @@
 package com.android.eazymvp.base.baseimpl.presenter;
 
+
 import com.android.eazymvp.base.baseInterface.IBaseViewCacheBack;
 
 public abstract class BaseCacheCallback<T> extends BaseCallback<T> {

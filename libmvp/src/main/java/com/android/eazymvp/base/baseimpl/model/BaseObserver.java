@@ -1,5 +1,6 @@
 package com.android.eazymvp.base.baseimpl.model;
 
+
 import com.android.eazymvp.base.baseimpl.presenter.BaseCallback;
 
 import io.reactivex.Observer;

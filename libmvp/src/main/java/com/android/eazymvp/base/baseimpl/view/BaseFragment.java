@@ -513,4 +513,18 @@ public abstract class BaseFragment extends RxFragment
     public boolean isDestroy() {
         return destroy;
     }
+
+    @Override
+    public void setUserVisibleHint(boolean isVisibleToUser) {
+        super.setUserVisibleHint(isVisibleToUser);
+        lazeyLoad(isVisibleToUser);
+    }
+
+    /**
+     * 是否需要懒加载
+     *
+     * @param isVisible true 当前页面显示了   false当前页面没显示
+     */
+    protected void lazeyLoad(boolean isVisible) {
+    }
 }

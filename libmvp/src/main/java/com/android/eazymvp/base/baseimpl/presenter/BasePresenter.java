@@ -167,6 +167,27 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
     }
 
     @Override
+    public void requestData(String url) {
+        getModel().requestData(url, getHashMap(), null);
+    }
+
+    @Override
+    public void requestData(String url, final Map<String, Object> datas) {
+        getModel().requestData(url, datas, null);
+    }
+
+    @Override
+    public void requestData(final IBaseDestroy iBaseDestroy, String url) {
+        getModel().requestData(url, getHashMap(), null);
+    }
+
+    @Override
+    public  void requestData(final IBaseDestroy iBaseDestroy, String url,
+                                final Map<String, Object> datas) {
+        getModel().requestData(url, datas, null);
+    }
+
+    @Override
     public <T> void requestData(String url, final BaseDefViewBack<T> iBaseDefViewBack) {
         final Map<String, Object> datas = getHashMap();
         getModel().requestData(url, datas, new BaseCallback<T>(iBaseDefViewBack) {

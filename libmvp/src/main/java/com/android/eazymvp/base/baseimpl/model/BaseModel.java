@@ -1,10 +1,10 @@
 package com.android.eazymvp.base.baseimpl.model;
 
-import com.android.httpservice.http.NetUtil;
 import com.android.eazymvp.base.baseimpl.presenter.BaseCallback;
 import com.android.eazymvp.base.baseimpl.presenter.BasePresenter;
 import com.android.eazymvp.netapi.HttpServiceApi;
 import com.android.eazymvp.util.log.LogUtil;
+import com.android.httpservice.http.NetUtil;
 import com.google.gson.Gson;
 import com.trello.rxlifecycle2.LifecycleProvider;
 import com.trello.rxlifecycle2.LifecycleTransformer;
@@ -349,7 +349,7 @@ public abstract class BaseModel<HttpService> {
 
                         @Override
                         public void onNext(ResponseBody responseBody) {
-                            if (callback != null) {
+                            if (callback != null && callback.isBackNull()) {
                                 if (mGson == null) {
                                     mGson = new Gson();
                                 }
@@ -394,13 +394,14 @@ public abstract class BaseModel<HttpService> {
 
                         @Override
                         public void onNext(ResponseBody responseBody) {
-                            if (callback != null) {
+                            if (callback != null && callback.isBackNull()) {
                                 if (mGson == null) {
                                     mGson = new Gson();
                                 }
 
                                 try {
-                                    T t = mGson.fromJson(responseBody.string(), callback.getClasst());
+                                    T t = mGson.fromJson(responseBody.string(),
+                                            callback.getClasst());
                                     callback.onCallSuccessful(t);
                                 } catch (IOException e) {
                                     e.printStackTrace();

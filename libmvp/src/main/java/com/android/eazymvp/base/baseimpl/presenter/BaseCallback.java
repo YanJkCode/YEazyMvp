@@ -56,4 +56,13 @@ public class BaseCallback<T> {
         return mBaseDefViewBack != null ? mBaseDefViewBack.getClasst() : null;
     }
 
+    public boolean isBackNull() {
+        switch (type) {
+            case 1:
+                return mViewBack != null;
+            case 2:
+                return mBaseDefViewBack != null;
+        }
+        return false;
+    }
 }

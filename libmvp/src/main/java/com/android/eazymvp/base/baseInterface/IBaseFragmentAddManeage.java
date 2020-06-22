@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.android.eazymvp.base.baseimpl.view.BaseFragment;
 
+
 public interface IBaseFragmentAddManeage {
    /**
     * 添加显示fragment

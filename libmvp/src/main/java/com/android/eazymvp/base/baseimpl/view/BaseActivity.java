@@ -1,5 +1,6 @@
 package com.android.eazymvp.base.baseimpl.view;
 
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
