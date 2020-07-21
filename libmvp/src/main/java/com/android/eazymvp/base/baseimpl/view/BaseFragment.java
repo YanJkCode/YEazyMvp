@@ -1,20 +1,16 @@
 package com.android.eazymvp.base.baseimpl.view;
 
-import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Point;
 import android.graphics.Typeface;
-import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +18,7 @@ import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 
 import com.android.eazymvp.R;
@@ -30,6 +27,7 @@ import com.android.eazymvp.base.baseInterface.IBaseDestroy;
 import com.android.eazymvp.base.baseInterface.IBaseFragmentDecorate;
 import com.android.eazymvp.base.baseInterface.IBaseGetMateData;
 import com.android.eazymvp.base.baseInterface.IBaseLayout;
+import com.android.eazymvp.base.baseInterface.IBaseTabItem;
 import com.android.eazymvp.base.baseInterface.IBaseTextFont;
 import com.android.eazymvp.base.baseInterface.IBaseToActivity;
 import com.android.eazymvp.util.log.LogUtil;
@@ -42,7 +40,7 @@ import me.jessyan.autosize.internal.CustomAdapt;
 
 public abstract class BaseFragment extends RxFragment
         implements IBaseLayout, IBaseToActivity, IBaseFragmentDecorate, CustomAdapt,
-        IBaseGetMateData, IBaseTextFont, IBaseDestroy, IBaseChannel {
+        IBaseGetMateData, IBaseTextFont, IBaseDestroy, IBaseChannel, IBaseTabItem {
 
     protected Unbinder unbinder;
     protected Context mContext;
@@ -57,8 +55,8 @@ public abstract class BaseFragment extends RxFragment
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public final View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                                   @Nullable Bundle savedInstanceState) {
         destroy = false;
         int resource = initLayout();
         if (resource != 0) {
@@ -170,70 +168,6 @@ public abstract class BaseFragment extends RxFragment
         return getMetaDataInfo().metaData.getLong(name);
     }
 
-    public static void setScaleImage(final Activity activity, final View view, int drawableResId) {
-
-        // 获取屏幕的高宽
-        Point outSize = new Point();
-        activity.getWindow().getWindowManager().getDefaultDisplay().getSize(outSize);
-        // 解析将要被处理的图片
-        Bitmap resourceBitmap;
-        if (drawableResId != 0) {
-            resourceBitmap = BitmapFactory.decodeResource(activity.getResources(),
-                    drawableResId);
-        } else {
-            resourceBitmap = ((BitmapDrawable) view.getBackground()).getBitmap();
-        }
-
-        if (resourceBitmap == null) {
-            return;
-        }
-        // 开始对图片进行拉伸或者缩放
-
-        // 使用图片的缩放比例计算将要放大的图片的高度
-        int bitmapScaledHeight =
-                Math.round(resourceBitmap.getHeight() * outSize.x * 1.0f / resourceBitmap.getWidth());
-
-        // 以屏幕的宽度为基准，如果图片的宽度比屏幕宽，则等比缩小，如果窄，则放大
-        final Bitmap scaledBitmap = Bitmap.createScaledBitmap(resourceBitmap, outSize.x,
-                bitmapScaledHeight, false);
-
-        view.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
-            @Override
-            public boolean onPreDraw() {
-                //这里防止图像的重复创建，避免申请不必要的内存空间
-                if (scaledBitmap.isRecycled())
-                    //必须返回true
-                    return true;
-
-
-                // 当UI绘制完毕，我们对图片进行处理
-                int viewHeight = view.getMeasuredHeight();
-
-
-                // 计算将要裁剪的图片的顶部以及底部的偏移量
-                int offset = (scaledBitmap.getHeight() - viewHeight) / 2;
-
-
-                // 对图片以中心进行裁剪，裁剪出的图片就是非常适合做引导页的图片了
-                Bitmap finallyBitmap = Bitmap.createBitmap(scaledBitmap, 0, offset,
-                        scaledBitmap.getWidth(),
-                        scaledBitmap.getHeight() - offset * 2);
-
-
-                if (!finallyBitmap.equals(scaledBitmap)) {//如果返回的不是原图，则对原图进行回收
-                    scaledBitmap.recycle();
-                    System.gc();
-                }
-
-
-                // 设置图片显示
-                view.setBackgroundDrawable(new BitmapDrawable(activity.getResources(),
-                        finallyBitmap));
-                return true;
-            }
-        });
-    }
-
     protected void showHint(CharSequence msg) {
         if (sToast == null) {
             View view = Toast.makeText(getActivity(), "", Toast.LENGTH_SHORT).getView();
@@ -318,6 +252,15 @@ public abstract class BaseFragment extends RxFragment
         if (curTime - lastTime > TargetTime) {
             lastTime = curTime;
             startActivity(createIntent(tClass, intent));
+        }
+    }
+
+    @Override
+    public final void toActivityForResult(Class<?> tClass, int resuleCode) {
+        long curTime = System.currentTimeMillis();
+        if (curTime - lastTime > TargetTime) {
+            lastTime = curTime;
+            startActivityForResult(createIntent(tClass, null), resuleCode);
         }
     }
 
@@ -455,6 +398,7 @@ public abstract class BaseFragment extends RxFragment
     }
 
     public void refresh() {
+        initData();
     }
 
     @Override
@@ -467,6 +411,11 @@ public abstract class BaseFragment extends RxFragment
         unbinder.unbind();
     }
 
+    /**
+     * 绑定点击监听
+     *
+     * @param resId 需要绑定的ID
+     */
     public void bindOnClick(View.OnClickListener baseOnClick, @IdRes int[] resId) {
         if (baseOnClick == null) {
             throw new NullPointerException("回调接口为空!");
@@ -478,7 +427,36 @@ public abstract class BaseFragment extends RxFragment
 
         for (int id : resId) {
             if (rootView != null) {
-                rootView.findViewById(id).setOnClickListener(baseOnClick);
+                View view = rootView.findViewById(id);
+                if (view != null) {
+                    view.setOnClickListener(baseOnClick);
+                } else {
+                    LogUtil.e("未找到 目标ID:" + id);
+                }
+            }
+        }
+    }
+
+    /**
+     * 绑定长按点击监听
+     *
+     * @param resId 需要绑定的ID
+     */
+    public void bindOnLongClick(View.OnLongClickListener baseOnClick, @IdRes int[] resId) {
+        if (baseOnClick == null) {
+            throw new NullPointerException("回调接口为空!");
+        }
+
+        if (resId == null) {
+            throw new NullPointerException("请存入需要设置点击监听的ID");
+        }
+
+        for (int id : resId) {
+            View view = this.findViewById(id);
+            if (view != null) {
+                view.setOnLongClickListener(baseOnClick);
+            } else {
+                LogUtil.e("未找到 目标ID:" + id);
             }
         }
     }
@@ -514,9 +492,32 @@ public abstract class BaseFragment extends RxFragment
         return destroy;
     }
 
+    /**
+     * 判断当前是否是主线程
+     */
+    public boolean isMainProcess() {
+        int pid = android.os.Process.myPid();
+        FragmentActivity activity = getActivity();
+        if (activity != null) {
+            Application application = activity.getApplication();
+            if (application != null) {
+                ActivityManager activityManager = (ActivityManager) application.getSystemService(Context.ACTIVITY_SERVICE);
+                for (ActivityManager.RunningAppProcessInfo appProcess : activityManager.getRunningAppProcesses()) {
+                    if (appProcess.pid == pid) {
+                        return application.getApplicationInfo().packageName.equals(appProcess.processName);
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
+        if (rootView == null) {
+            return;
+        }
         lazeyLoad(isVisibleToUser);
     }
 
@@ -526,5 +527,13 @@ public abstract class BaseFragment extends RxFragment
      * @param isVisible true 当前页面显示了   false当前页面没显示
      */
     protected void lazeyLoad(boolean isVisible) {
+
+    }
+
+    @Override
+    public void toTabItem(int index) {
+        if (mActivity != null) {
+            mActivity.toTabItem(index);
+        }
     }
 }

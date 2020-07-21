@@ -32,4 +32,5 @@ dependencies {
     annotationProcessor 'com.jakewharton:butterknife-compiler:10.1.0'
 
     api 'me.jessyan:autosize:1.1.2'//自动适配大小
+
 }

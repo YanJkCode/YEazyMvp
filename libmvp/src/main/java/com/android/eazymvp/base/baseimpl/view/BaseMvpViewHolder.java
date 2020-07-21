@@ -24,7 +24,7 @@ public abstract class BaseMvpViewHolder<P extends IBasePresenter> extends BaseVi
     @Override
     protected final void initMvp() {
         mPresenter = createPresenter();
-        if (mPresenter != null) {
+        if (mPresenter != null && this instanceof IBaseView) {
             mPresenter.attachView(this);
         }
     }

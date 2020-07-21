@@ -2,6 +2,7 @@ package com.android.eazymvp.base.baseimpl.view;
 
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -15,6 +16,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -39,6 +41,7 @@ import com.android.eazymvp.base.baseInterface.IBaseDestroy;
 import com.android.eazymvp.base.baseInterface.IBaseFragmentAddManeage;
 import com.android.eazymvp.base.baseInterface.IBaseGetMateData;
 import com.android.eazymvp.base.baseInterface.IBaseLayout;
+import com.android.eazymvp.base.baseInterface.IBaseTabItem;
 import com.android.eazymvp.base.baseInterface.IBaseTextFont;
 import com.android.eazymvp.base.baseInterface.IBaseToActivity;
 import com.android.eazymvp.listener.ActivityLifecycleListener;
@@ -59,7 +62,7 @@ import me.jessyan.autosize.internal.CustomAdapt;
 public abstract class BaseActivity extends RxAppCompatActivity
         implements IBaseContext, IBaseLayout, IBaseToActivity,
         IBaseFragmentAddManeage,
-        CustomAdapt, IBaseGetMateData, IBaseTextFont, IBaseDestroy {
+        CustomAdapt, IBaseGetMateData, IBaseTextFont, IBaseDestroy, IBaseTabItem {
 
     private boolean destroy;
     /**
@@ -89,6 +92,12 @@ public abstract class BaseActivity extends RxAppCompatActivity
     public static final int LANDSCAPE = 2;
 
     /**
+     * 如果有回调 是否关闭当前页面 需要启动时传入FOR_START_FINISH_CODE
+     * 如果在这个启动连接中有任何一个地方设置了 FOR_FINISH 则会返回到第一次启动传入FOR_START_FINISH_CODE的Activity页面
+     */
+    public static final int FOR_START_FINISH_CODE = 0x4443;
+    public static final int FOR_FINISH = 0x4444;
+    /**
      * 屏幕是否可以旋转
      */
     private static int isActivityOrientationMode = PORTRAIT;
@@ -114,7 +123,6 @@ public abstract class BaseActivity extends RxAppCompatActivity
             BaseActivity.this.handleMessage(msg);
         }
     };
-
 
     /**
      * handler回调
@@ -149,10 +157,6 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return true;
     }
 
-    protected BaseActivity getThis() {
-        return this;
-    }
-
     /**
      * 点击事件 时间间隔判断
      *
@@ -170,13 +174,18 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return true;
     }
 
+    protected BaseActivity getThis() {
+        return this;
+    }
+
+
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({PORTRAIT, LANDSCAPE})
     @interface ActivityMode {
     }
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected final void onCreate(@Nullable Bundle savedInstanceState) {
         if (isOpenAutoSize) {
             setAutoSize(AutoSizeConfig.getInstance());//启动AutoSize
         }
@@ -200,17 +209,6 @@ public abstract class BaseActivity extends RxAppCompatActivity
                     break;
             }
         }
-
-        ///**
-        // * 更改弹窗类型
-        // */
-        //WindowManager.LayoutParams params = getWindow().getAttributes();
-        //params.width = WindowManager.LayoutParams.MATCH_PARENT;
-        //params.height = WindowManager.LayoutParams.MATCH_PARENT;
-        //params.gravity = Gravity.CENTER;
-        //params.type = WindowManager.LayoutParams.TYPE_TOAST;
-        //getWindow().setAttributes(params);
-
 
         addWindowMode();//添加窗口状态
         int layoutResID = initLayout();
@@ -306,7 +304,6 @@ public abstract class BaseActivity extends RxAppCompatActivity
      */
     public static void setScaleImage(final Activity activity, final View view,
                                      int drawableResId) {
-
         // 获取屏幕的高宽
         Point outSize = new Point();
         activity.getWindow().getWindowManager().getDefaultDisplay().getSize(outSize);
@@ -506,12 +503,12 @@ public abstract class BaseActivity extends RxAppCompatActivity
     }
 
     @Override
-    public final void toActivity(Class<?> tClass) {
+    public final void toActivity(@NonNull Class<?> tClass) {
         toActivity(tClass, null);
     }
 
     @Override
-    public final void toActivity(Class<?> tClass, Intent intent) {
+    public final void toActivity(@NonNull Class<?> tClass, Intent intent) {
         long curTime = System.currentTimeMillis();
         if (curTime - lastTime > TargetTime) {
             lastTime = curTime;
@@ -520,7 +517,16 @@ public abstract class BaseActivity extends RxAppCompatActivity
     }
 
     @Override
-    public final void toActivityForResult(Class<?> tClass, int requestCode, Intent intent) {
+    public final void toActivityForResult(@NonNull Class<?> tClass, int requestCode) {
+        long curTime = System.currentTimeMillis();
+        if (curTime - lastTime > TargetTime) {
+            lastTime = curTime;
+            startActivityForResult(createIntent(tClass, null), requestCode);
+        }
+    }
+
+    @Override
+    public final void toActivityForResult(@NonNull Class<?> tClass, int requestCode, Intent intent) {
         long curTime = System.currentTimeMillis();
         if (curTime - lastTime > TargetTime) {
             lastTime = curTime;
@@ -528,15 +534,13 @@ public abstract class BaseActivity extends RxAppCompatActivity
         }
     }
 
-    public void toLoginActivity() {
-    }
 
     /**
      * 跳转到指定包名的activity
      *
      * @param classPath 包地址
      */
-    public void toClassPathActivity(String classPath) {
+    public void toClassPathActivity(@NonNull String classPath) {
         try {
             toActivity(Class.forName(classPath), null);
         } catch (ClassNotFoundException e) {
@@ -551,7 +555,7 @@ public abstract class BaseActivity extends RxAppCompatActivity
      * @param classPath 包地址
      * @param intent    intent
      */
-    public void toClassPathActivity(String classPath, Intent intent) {
+    public void toClassPathActivity(@NonNull String classPath, Intent intent) {
         try {
             toActivity(Class.forName(classPath), intent);
         } catch (ClassNotFoundException e) {
@@ -565,7 +569,7 @@ public abstract class BaseActivity extends RxAppCompatActivity
      * @param classPath 包地址
      * @param hintLog   log日志
      */
-    public void toClassPathActivity(String classPath, String hintLog) {
+    public void toClassPathActivity(@NonNull String classPath, String hintLog) {
         try {
             toActivity(Class.forName(classPath), null);
         } catch (ClassNotFoundException e) {
@@ -581,7 +585,7 @@ public abstract class BaseActivity extends RxAppCompatActivity
      * @param hintLog   log日志
      * @param intent    intent
      */
-    public void toClassPathActivity(String classPath, String hintLog, Intent intent) {
+    public void toClassPathActivity(@NonNull String classPath, String hintLog, Intent intent) {
         try {
             toActivity(Class.forName(classPath), intent);
         } catch (ClassNotFoundException e) {
@@ -590,12 +594,21 @@ public abstract class BaseActivity extends RxAppCompatActivity
         }
     }
 
+    /**
+     * 刷新数据
+     */
     public void refresh() {
         initData();
     }
 
-
-    private Intent createIntent(Class<?> tClass, Intent intent) {
+    /**
+     * 创建一个intent
+     *
+     * @param tClass 目标class
+     * @param intent 传入的intent 如果为空则创建一个
+     * @return
+     */
+    private Intent createIntent(@NonNull Class<?> tClass, Intent intent) {
         Intent start;
         if (intent != null) {
             intent.setClass(getContext(), tClass);
@@ -606,11 +619,21 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return start;
     }
 
-
+    /**
+     * 权限判断
+     *
+     * @param permissions 请求的权限
+     */
     protected final boolean applyPermission(String[] permissions) {
         return applyPermission(permissions, 0);
     }
 
+    /**
+     * 权限判断
+     *
+     * @param permissions 请求的权限
+     * @param requestCode 请求码
+     */
     protected final boolean applyPermission(String[] permissions, int requestCode) {
         ArrayList<String> permissionsList = new ArrayList<>();//创建一个集合用于存储权限数据
         for (String permission : permissions) {
@@ -633,45 +656,67 @@ public abstract class BaseActivity extends RxAppCompatActivity
         }
     }
 
+    /**
+     * 添加 fragment到指定容器中
+     *
+     * @param manager fragment管理器
+     * @param fClass  需要添加的fragment
+     * @param groupID 显示这个fragment的容器
+     * @param args
+     * @param <T>
+     * @return
+     */
     @Override
     public <T extends BaseFragment> T addFragment(FragmentManager manager, Class<T> fClass,
                                                   int groupID, Bundle args) {
         String tag = fClass.getName();
         Fragment fragment = manager.findFragmentByTag(tag);
-        T baseFragment = null;
-        FragmentTransaction transaction = manager.beginTransaction();
-        if (fragment != null) {
-            baseFragment = (T) fragment;
-            if (baseFragment.isAdded()) {
-                if (baseFragment.isHidden()) {
-                    transaction.show(baseFragment);
+        if (fragment instanceof BaseFragment) {
+            BaseFragment baseFragment = null;
+            FragmentTransaction transaction = manager.beginTransaction();
+            if (fragment != null) {
+                baseFragment = (BaseFragment) fragment;
+                if (baseFragment.isAdded()) {
+                    if (baseFragment.isHidden()) {
+                        transaction.show(baseFragment);
+                    }
+                } else {
+                    transaction.add(groupID, baseFragment, tag);
                 }
             } else {
-                transaction.add(groupID, baseFragment, tag);
+                if (fClass != null) {
+                    try {
+                        baseFragment = fClass.newInstance();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    if (baseFragment == null) {
+                        throw new UnsupportedOperationException(tag + " Fragment必须提供无参构造方法");
+                    }
+                    isFragmentState(tag, baseFragment, transaction, manager.getFragments().size());
+                    if (baseFragment != null)
+                        transaction.add(groupID, baseFragment, tag);
+                }
             }
+            if (baseFragment != null)
+                hideAllFragment(manager, transaction, baseFragment);
+            if (args != null)
+                baseFragment.setArguments(args);
+            transaction.commit();
+            return (T) baseFragment;
         } else {
-            if (fClass != null) {
-                try {
-                    baseFragment = fClass.newInstance();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                if (baseFragment == null) {
-                    throw new UnsupportedOperationException(tag + " Fragment必须提供无参构造方法");
-                }
-                isFragmentState(tag, baseFragment, transaction, manager.getFragments().size());
-                if (baseFragment != null)
-                    transaction.add(groupID, baseFragment, tag);
-            }
+            return null;
         }
-        if (baseFragment != null)
-            hideAllFragment(manager, transaction, baseFragment);
-        if (args != null)
-            baseFragment.setArguments(args);
-        transaction.commit();
-        return baseFragment;
     }
 
+    /**
+     * 判断fragment的动画相关开启效果
+     *
+     * @param tag
+     * @param baseFragment
+     * @param transaction
+     * @param fragmrntSize
+     */
     private void isFragmentState(String tag, BaseFragment baseFragment,
                                  FragmentTransaction transaction, int fragmrntSize) {
         if (baseFragment.isNeedAnimation())
@@ -684,6 +729,13 @@ public abstract class BaseActivity extends RxAppCompatActivity
             transaction.addToBackStack(tag);
     }
 
+    /**
+     * 隐藏多余fragment
+     *
+     * @param manager     当前页面的管理器
+     * @param transaction 当前的事件
+     * @param curFragment 当前显示的fragment
+     */
     @Override
     public void hideAllFragment(FragmentManager manager, FragmentTransaction transaction,
                                 Fragment curFragment) {
@@ -698,26 +750,48 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return this;
     }
 
+    /**
+     * 加载MVP请求框架
+     */
     protected void initMvp() {
     }
 
+    /**
+     * 加载页面
+     */
     protected void initView() {
     }
 
+    /**
+     * 加载数据
+     */
     protected void initData() {
     }
 
+    /**
+     * 设置监听
+     */
     protected void initListener() {
     }
 
-
     private long firstTime = 0;
+    /**
+     * 是否开启 连续点击退出
+     */
     private boolean isBackState;
 
-    public void setBackState(boolean backState) {
+    /**
+     * 开关 连续点击退出
+     *
+     * @param backState 默认是关闭功能  如果要用请在主页开启
+     */
+    public void openBackState(boolean backState) {
         isBackState = backState;
     }
 
+    /**
+     * 连续点击2次退出 防止不小心关闭app
+     */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (isBackState) {
@@ -735,6 +809,11 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return super.onKeyDown(keyCode, event);
     }
 
+    /**
+     * 绑定点击监听
+     *
+     * @param resId 需要绑定的ID
+     */
     public void bindOnClick(View.OnClickListener baseOnClick, @IdRes int[] resId) {
         if (baseOnClick == null) {
             throw new NullPointerException("回调接口为空!");
@@ -749,9 +828,32 @@ public abstract class BaseActivity extends RxAppCompatActivity
             if (view != null) {
                 view.setOnClickListener(baseOnClick);
             } else {
-                throw new NullPointerException("未找到 目标ID:" + id);
+                LogUtil.e("未找到 目标ID:" + id);
             }
+        }
+    }
 
+    /**
+     * 绑定长按点击监听
+     *
+     * @param resId 需要绑定的ID
+     */
+    public void bindOnLongClick(View.OnLongClickListener baseOnClick, @IdRes int[] resId) {
+        if (baseOnClick == null) {
+            throw new NullPointerException("回调接口为空!");
+        }
+
+        if (resId == null) {
+            throw new NullPointerException("请存入需要设置点击监听的ID");
+        }
+
+        for (int id : resId) {
+            View view = this.findViewById(id);
+            if (view != null) {
+                view.setOnLongClickListener(baseOnClick);
+            } else {
+                LogUtil.e("未找到 目标ID:" + id);
+            }
         }
     }
 
@@ -774,7 +876,16 @@ public abstract class BaseActivity extends RxAppCompatActivity
     @Override
     public String getMataDataString(String name) {
         ApplicationInfo appInfo = getMetaDataInfo();
-        return appInfo.metaData.getString(name);
+        String dataString = null;
+        if (appInfo != null) {
+            if (appInfo.metaData != null) {
+                dataString = appInfo.metaData.getString(name);
+            }
+        }
+        if (TextUtils.isEmpty(dataString)) {
+            dataString = "";
+        }
+        return dataString;
     }
 
     @Override
@@ -807,13 +918,26 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return getMetaDataInfo().metaData.getLong(name);
     }
 
+    /**
+     * 设置textview的字体
+     *
+     * @param view     目标view
+     * @param FontName 字体名字 Assets
+     */
     @Override
     public void setTextViewTypeface(TextView view, String FontName) {
-        view.setTypeface(Typeface.createFromAsset(view.getContext().getApplicationContext().getAssets(), FontName));
+        if (view == null || TextUtils.isEmpty(FontName)) {
+            return;
+        }
+        Typeface fromAsset = Typeface.createFromAsset(getAssets(), FontName);
+        if (fromAsset == null) {
+            return;
+        }
+        view.setTypeface(fromAsset);
     }
 
     /**
-     * 是否被销毁了
+     * 当前页面是否被销毁了
      *
      * @return true被销毁了    false未销毁
      */
@@ -822,11 +946,53 @@ public abstract class BaseActivity extends RxAppCompatActivity
         return destroy;
     }
 
+    /**
+     * 判断当前是否是主线程
+     */
+    public boolean isMainProcess() {
+        int pid = android.os.Process.myPid();
+        ActivityManager activityManager = (ActivityManager) getApplication().getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningAppProcessInfo appProcess : activityManager.getRunningAppProcesses()) {
+            if (appProcess.pid == pid) {
+                return getApplication().getApplicationInfo().packageName.equals(appProcess.processName);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * activity生命周期监听器
+     */
     private ActivityLifecycleListener mActivityLifecycleListener;
 
+    /**
+     * activity生命周期监听器
+     *
+     * @param activityLifecycleListener
+     */
     public void setActivityLifecycleListener(ActivityLifecycleListener activityLifecycleListener) {
         mActivityLifecycleListener = activityLifecycleListener;
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (!isDestroy()) {
+            if (requestCode == FOR_START_FINISH_CODE && resultCode == FOR_FINISH) {//判断是否需要返回上一页
+                setResult(resultCode);
+                finish();
+            }
+        }
+    }
 
+
+    /**
+     * 跳转到登录页面
+     */
+    public void toLoginActivity() {
+    }
+
+    @Override
+    public void toTabItem(int index) {
+    }
 }

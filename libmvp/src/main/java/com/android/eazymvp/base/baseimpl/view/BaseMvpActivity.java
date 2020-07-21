@@ -1,25 +1,30 @@
 package com.android.eazymvp.base.baseimpl.view;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 import com.android.eazymvp.base.baseInterface.IBasePresenter;
+import com.android.eazymvp.base.baseInterface.IBasePresenterRequest;
 import com.android.eazymvp.base.baseInterface.IBaseView;
+import com.android.eazymvp.base.baseimpl.presenter.BaseDefViewBack;
+import com.android.eazymvp.base.baseimpl.presenter.BasePresenter;
+
+import java.util.HashMap;
+
+import okhttp3.MultipartBody;
 
 
-public abstract class BaseMvpActivity<P extends IBasePresenter> extends BaseActivity implements IBaseView<P> {
+public abstract class BaseMvpActivity<P extends IBasePresenter> extends BaseActivity implements IBaseView<P>, IBasePresenterRequest {
     protected P mPresenter;
 
     @Override
     protected final void initMvp() {
         mPresenter = createPresenter();
-        if (mPresenter != null) {
+        if (mPresenter != null && this instanceof IBaseView) {
             mPresenter.attachView(this);
         }
     }
-
 
     @Override
     protected void onDestroy() {
@@ -40,11 +45,9 @@ public abstract class BaseMvpActivity<P extends IBasePresenter> extends BaseActi
 
     public static boolean isOnInternet(Context context) {
         try {
-            ConnectivityManager connectivityManager =
-                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (connectivityManager != null) {
-                @SuppressLint("MissingPermission") NetworkInfo networkInfo =
-                        connectivityManager.getActiveNetworkInfo();
+                NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
                 if (networkInfo != null && networkInfo.isConnected()) {
                     return true;
                 }
@@ -53,5 +56,75 @@ public abstract class BaseMvpActivity<P extends IBasePresenter> extends BaseActi
             e.printStackTrace();
         }
         return false;
+    }
+
+    @Override
+    public P createPresenter() {
+        BasePresenter basePresenter = BasePresenter.getBasePresenter();
+        try {
+            return (P) basePresenter;
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    /**
+     * 判断当前 数据服务是否存在
+     *
+     * @return true 不存在  false 存在
+     */
+    private boolean isNotPresenter() {
+        return mPresenter == null;
+    }
+
+    /**
+     * 获取一个HashMap String,Object
+     */
+    public HashMap<String, Object> getHashMap() {
+        if (isNotPresenter()) {
+            return new HashMap<String, Object>();
+        }
+        return mPresenter.getHashMap();
+    }
+
+    @Override
+    public void requestData(String url) {
+        if (isNotPresenter()) {
+            return;
+        }
+        mPresenter.requestData(this, url);
+    }
+
+    @Override
+    public void requestData(String url, HashMap<String, Object> datas) {
+        if (isNotPresenter()) {
+            return;
+        }
+        mPresenter.requestData(this, url, datas);
+    }
+
+
+    @Override
+    public <T> void requestData(String url, BaseDefViewBack<T> iBaseDefViewBack) {
+        if (isNotPresenter()) {
+            return;
+        }
+        mPresenter.requestData(this, url, iBaseDefViewBack);
+    }
+
+    @Override
+    public <T> void requestData(String url, HashMap<String, Object> datas, BaseDefViewBack<T> iBaseDefViewBack) {
+        if (isNotPresenter()) {
+            return;
+        }
+        mPresenter.requestData(this, url, datas, iBaseDefViewBack);
+    }
+
+    @Override
+    public <T> void requestDataFile(String url, HashMap<String, Object> datas, MultipartBody.Part file, BaseDefViewBack<T> iBaseDefViewBack) {
+        if (isNotPresenter()) {
+            return;
+        }
+        mPresenter.requestDataFile(this, url, datas, file, iBaseDefViewBack);
     }
 }

@@ -55,31 +55,27 @@ public abstract class BaseModel<HttpService> {
         }
     }
 
-
     /**
      * openHttpService() 返回一个对象 携带 服务接口 和 服务跟地址
      */
     private final void createHttpService() {
         mHttpServiceState = openHttpService();
         if (mHttpServiceState.httpServiceClass == null) {
-            LogUtil.d("httpServiceClass = null,请传入服务接口类");
-            return;
+            LogUtil.e("httpServiceClass = null,请传入服务接口类");
+            throw new NullPointerException("httpServiceClass = null,请传入服务接口类");
         }
 
         if (mHttpServiceState.baseUrl == null) {
-            LogUtil.d("baseUrl = null,请传入服务跟地址");
-            return;
+            LogUtil.e("baseUrl = null,请传入服务跟地址");
+            throw new NullPointerException("baseUrl = null,请传入服务跟地址");
         }
 
-        if (!mHttpServiceState.baseUrl.matches("^([http:\\/\\/]|[https:\\/\\/])?[^\\s\\" +
-                ".]?[^\\s]+\\" +
-                ".[^\\s]+\\/+$")) {
-            LogUtil.d("baseUrl 跟地址不正确,请确认传入了正确的跟地址");
-            return;
+        if (!mHttpServiceState.baseUrl.matches("^([http:\\/\\/]|[https:\\/\\/])?[^\\s\\.]?[^\\s]+\\.[^\\s]+\\/+$")) {
+            LogUtil.e("baseUrl 跟地址不正确,请确认传入了正确的跟地址");
+            throw new NullPointerException("baseUrl 跟地址不正确,请确认传入了正确的跟地址");
         }
 
-        httpService = NetUtil.getNetUtil().getService(mHttpServiceState.getBaseUrl(),
-                mHttpServiceState.getHttpServiceClass());
+        httpService = NetUtil.getNetUtil().getService(mHttpServiceState.getBaseUrl(), mHttpServiceState.getHttpServiceClass());
 
         defHttpService = NetUtil.getNetUtil().getService(mHttpServiceState.getBaseUrl(), HttpServiceApi.class);
     }
@@ -90,6 +86,7 @@ public abstract class BaseModel<HttpService> {
     protected final HttpService getHttpService() {
         if (httpService == null) {
             try {
+                LogUtil.e("服务器接口为空,请确认传入了服务器接口类");
                 throw new NullPointerException("服务器接口为空,请确认传入了服务器接口类");
             } catch (Exception e) {
                 e.printStackTrace();
@@ -154,8 +151,7 @@ public abstract class BaseModel<HttpService> {
         if (flatMap == null) {
             rObservable = observable.flatMap(new Function<T, ObservableSource<R>>() {
                 @Override
-                public ObservableSource<R> apply(final T t) throws Exception {
-
+                public ObservableSource<R> apply(final T t) {
                     if (t == null) {
                         return Observable.error(new Exception("请求失败,数据为空"));
                     }
@@ -167,24 +163,24 @@ public abstract class BaseModel<HttpService> {
                             }
                         });
                     }
-                    Object data = t.body();
-                    return data == null ?
-                            (ObservableSource<R>) Observable.error(new Exception(t.message())) :
-                            (ObservableSource<R>) Observable.just(data);
+                    R r = (R) t.body();
+                    return r == null ?
+                            Observable.<R>error(new Exception(t.message())) :
+                            Observable.just(r);
                 }
             });
         } else {
             rObservable = observable.flatMap(flatMap);
         }
         if (provider != null) {
-            rObservable.compose(rxObservableTransformer())
-                    .compose(isLifectcleProviderType(provider))//用于防止Activity关闭时回调造成的内存泄露与空指针
+            rObservable.<R>compose(this.<R>rxObservableTransformer())
+                    .<R>compose(this.<R>isLifectcleProviderType(provider))//用于防止Activity关闭时回调造成的内存泄露与空指针
                     //处理完成发送数据到callBack
-                    .subscribe(new BaseObserver(baseCallback));
+                    .<R>subscribe(new BaseObserver<R>(baseCallback));
         } else {
-            rObservable.compose(rxObservableTransformer())
+            rObservable.<R>compose(this.<R>rxObservableTransformer())
                     //处理完成发送数据到callBack
-                    .subscribe(new BaseObserver(baseCallback));
+                    .<R>subscribe(new BaseObserver<R>(baseCallback));
         }
     }
 
@@ -220,7 +216,6 @@ public abstract class BaseModel<HttpService> {
             }
         };
     }
-
 
     /**
      * 用于Rxjava的防内存泄露
@@ -354,9 +349,21 @@ public abstract class BaseModel<HttpService> {
                                     mGson = new Gson();
                                 }
                                 try {
-                                    T t = mGson.fromJson(responseBody.string(),
-                                            callback.getClasst());
-                                    callback.onCallSuccessful(t);
+                                    Class<T> classt = callback.getClasst();
+                                    if (classt != null) {
+                                        if ("String".equals(classt.getSimpleName())) {
+                                            callback.onCallSuccessful((T) responseBody.string());
+                                        } else {
+                                            T t = mGson.fromJson(responseBody.string(), classt);
+                                            if (t != null) {
+                                                callback.onCallSuccessful(t);
+                                            } else {
+                                                callback.onCallFailed(new Throwable("数据获取失败 网络连接或服务器异常"));
+                                            }
+                                        }
+                                    } else {
+                                        callback.onCallFailed(new Throwable("数据获取失败 网络连接或服务器异常"));
+                                    }
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
@@ -398,11 +405,22 @@ public abstract class BaseModel<HttpService> {
                                 if (mGson == null) {
                                     mGson = new Gson();
                                 }
-
                                 try {
-                                    T t = mGson.fromJson(responseBody.string(),
-                                            callback.getClasst());
-                                    callback.onCallSuccessful(t);
+                                    Class<T> classt = callback.getClasst();
+                                    if (classt != null) {
+                                        if ("String".equals(classt.getSimpleName())) {
+                                            callback.onCallSuccessful((T) responseBody.string());
+                                        } else {
+                                            T t = mGson.fromJson(responseBody.string(), classt);
+                                            if (t != null) {
+                                                callback.onCallSuccessful(t);
+                                            } else {
+                                                callback.onCallFailed(new Throwable("数据获取失败 网络连接或服务器异常"));
+                                            }
+                                        }
+                                    } else {
+                                        callback.onCallFailed(new Throwable("数据获取失败 网络连接或服务器异常"));
+                                    }
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }

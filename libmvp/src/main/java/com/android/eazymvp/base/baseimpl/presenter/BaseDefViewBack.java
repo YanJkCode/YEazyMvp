@@ -6,7 +6,7 @@ public abstract class BaseDefViewBack<T> {
     public Class<T> classt;
 
     public BaseDefViewBack() {
-        ParameterizedType types = (ParameterizedType) getClass().getGenericSuperclass();
+        ParameterizedType types = (ParameterizedType) this.<T>getClass().getGenericSuperclass();
         classt = (Class<T>) types.getActualTypeArguments()[0];
     }
 

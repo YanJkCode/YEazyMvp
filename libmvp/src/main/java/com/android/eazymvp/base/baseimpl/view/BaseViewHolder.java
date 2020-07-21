@@ -10,7 +10,6 @@ import android.view.View;
 import androidx.annotation.IdRes;
 import androidx.annotation.StringRes;
 
-
 import com.android.eazymvp.listener.ActivityLifecycleListener;
 
 import butterknife.ButterKnife;

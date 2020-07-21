@@ -5,6 +5,7 @@ import com.android.eazymvp.base.baseInterface.IBaseModel;
 import com.android.eazymvp.base.baseInterface.IBasePresenter;
 import com.android.eazymvp.base.baseInterface.IBaseView;
 import com.android.eazymvp.base.baseimpl.model.BaseModel;
+import com.android.eazymvp.util.log.LogUtil;
 import com.trello.rxlifecycle2.LifecycleProvider;
 
 import java.lang.ref.WeakReference;
@@ -26,7 +27,7 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
     private static LinkedList<Map<String, Object>> sHashMaps;
     private Disposable mDisposable;
     private static BasePresenter mBasePresenter;
-    private int mapMax = 5;
+    //private int mapMax = 5;
 
     public BasePresenter() {
         if (sHashMaps == null) {
@@ -34,21 +35,12 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
         }
     }
 
-    public static BasePresenter getTemporaryBasePresenter() {
-        if (mBasePresenter != null) {
-            return mBasePresenter;
-        } else {
-            throw new NullPointerException("请初始化 BasePresenter  BasePresenter.initBasePresneter" +
-                    "(BaseModel)");
-        }
-    }
-
     public static BasePresenter getBasePresenter() {
         if (mBasePresenter != null) {
             return mBasePresenter;
         } else {
-            throw new NullPointerException("请初始化 BasePresenter  BasePresenter.initBasePresneter" +
-                    "(BaseModel)");
+            LogUtil.e("请初始化 BasePresenter  BasePresenter.initBasePresneter(BaseModel)");
+            throw new NullPointerException("请初始化 BasePresenter  BasePresenter.initBasePresneter(BaseModel)");
         }
     }
 
@@ -108,14 +100,14 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
     /**
      * 获取的参数集合在请求完数据后会被清空
      *
-     * @param <E>
      * @return
      */
-    public <E> Map<String, E> getHashMap() {
+    @Override
+    public HashMap<String, Object> getHashMap() {
         //if (sHashMaps.size() > 0) {
         //    return (Map<String, E>) sHashMaps.removeFirst();
         //} else {
-        return new HashMap();
+        return new HashMap<String, Object>();
         //}
     }
 
@@ -167,71 +159,17 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
     }
 
     @Override
-    public void requestData(String url) {
-        getModel().requestData(url, getHashMap(), null);
-    }
-
-    @Override
-    public void requestData(String url, final Map<String, Object> datas) {
-        getModel().requestData(url, datas, null);
-    }
-
-    @Override
     public void requestData(final IBaseDestroy iBaseDestroy, String url) {
         getModel().requestData(url, getHashMap(), null);
     }
 
     @Override
-    public  void requestData(final IBaseDestroy iBaseDestroy, String url,
-                                final Map<String, Object> datas) {
+    public void requestData(final IBaseDestroy iBaseDestroy, String url,
+                            final HashMap<String, Object> datas) {
         getModel().requestData(url, datas, null);
     }
 
     @Override
-    public <T> void requestData(String url, final BaseDefViewBack<T> iBaseDefViewBack) {
-        final Map<String, Object> datas = getHashMap();
-        getModel().requestData(url, datas, new BaseCallback<T>(iBaseDefViewBack) {
-            @Override
-            public void onCallSuccessful(T value) {
-                if (iBaseDefViewBack != null) {
-                    iBaseDefViewBack.onSuccessful(value);
-                }
-                recycleHashMap(datas);
-            }
-
-            @Override
-            public <M extends Throwable> void onCallFailed(M msg) {
-                if (iBaseDefViewBack != null) {
-                    iBaseDefViewBack.onFailed(msg.getMessage());
-                }
-                recycleHashMap(datas);
-            }
-        });
-    }
-
-    @Override
-    public <T> void requestData(String url, final Map<String, Object> datas,
-                                final BaseDefViewBack<T> iBaseDefViewBack) {
-        getModel().requestData(url, datas, new BaseCallback<T>(iBaseDefViewBack) {
-            @Override
-            public void onCallSuccessful(T value) {
-                if (iBaseDefViewBack != null) {
-                    iBaseDefViewBack.onSuccessful(value);
-                }
-                recycleHashMap(datas);
-            }
-
-            @Override
-            public <M extends Throwable> void onCallFailed(M msg) {
-                if (iBaseDefViewBack != null) {
-                    iBaseDefViewBack.onFailed(msg.getMessage());
-                }
-                recycleHashMap(datas);
-            }
-        });
-    }
-
-    @Override
     public <T> void requestData(final IBaseDestroy iBaseDestroy, String url,
                                 final BaseDefViewBack<T> iBaseDefViewBack) {
         final Map<String, Object> datas = getHashMap();
@@ -270,7 +208,7 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
 
     @Override
     public <T> void requestData(final IBaseDestroy iBaseDestroy, String url,
-                                final Map<String, Object> datas,
+                                final HashMap<String, Object> datas,
                                 final BaseDefViewBack<T> iBaseDefViewBack) {
         getModel().requestData(url, datas, new BaseCallback<T>(iBaseDefViewBack) {
             @Override
@@ -279,7 +217,6 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
                     if (iBaseDestroy == null) {
                         return;
                     }
-
                     if (iBaseDestroy.isDestroy()) {
                         return;
                     }
@@ -304,35 +241,10 @@ public abstract class BasePresenter<V extends IBaseView, M extends BaseModel>
             }
         });
     }
-
-    @Override
-    public <T> void requestDataFile(String url,
-                                    final Map<String, Object> datas,
-                                    MultipartBody.Part file,
-                                    final BaseDefViewBack<T> iBaseDefViewBack) {
-        getModel().requestDataFile(url, datas, file, new BaseCallback<T>(iBaseDefViewBack) {
-            @Override
-            public void onCallSuccessful(T value) {
-                if (iBaseDefViewBack != null) {
-                    iBaseDefViewBack.onSuccessful(value);
-                }
-                recycleHashMap(datas);
-            }
-
-            @Override
-            public <M extends Throwable> void onCallFailed(M msg) {
-                if (iBaseDefViewBack != null) {
-                    iBaseDefViewBack.onFailed(msg.getMessage());
-                }
-                recycleHashMap(datas);
-            }
-        });
-    }
-
 
     @Override
     public <T> void requestDataFile(final IBaseDestroy iBaseDestroy, String url,
-                                    final Map<String, Object> datas,
+                                    final HashMap<String, Object> datas,
                                     MultipartBody.Part file,
                                     final BaseDefViewBack<T> iBaseDefViewBack) {
         getModel().requestDataFile(url, datas, file, new BaseCallback<T>(iBaseDefViewBack) {
